@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const values = lines[i].split(',');
             const row = {};
             headers.forEach((header, index) => {
-                row[header.trim()] = values[index].trim();
+                row[header.trim()] = values[index] ? values[index].trim() : ''; // Handle potential missing values
             });
             data.push(row);
         }
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Function to render the table rows
+    // Function to render the table rows (CORREGIDA)
     function renderTable(data) {
         resultsTableBody.innerHTML = ''; // Clear existing rows
 
@@ -72,34 +72,34 @@ document.addEventListener('DOMContentLoaded', () => {
             row.insertCell().textContent = player.CATEGORÍA;
             row.insertCell().textContent = player.FECHA;
 
-            // Handle THUMBS for various columns
-            const thumbColumns = [
-                'THOMAS_PSOAS_D', 'THOMAS_PSOAS_I',
-                'THOMAS_CUADRICEPS_D', 'THOMAS_CUADRICEPS_I',
-                'THOMAS_SARTORIO_D', 'THOMAS_SARTORIO_I',
-                'JURDAN_D', 'JURDAN_I'
+            // Define the pairs of (numeric_column, thumb_column_display_name)
+            // The order here must match the <th> order in index.html
+            const columnsToRender = [
+                { numCol: 'THOMAS_PSOAS_D', thumbCol: 'THOMAS PSOAS DER' },
+                { numCol: 'THOMAS_PSOAS_I', thumbCol: 'THOMAS PSOAS IZQ' },
+                { numCol: 'THOMAS_CUADRICEPS_D', thumbCol: 'THOMAS CUADRICEPS DER' },
+                { numCol: 'THOMAS_CUADRICEPS_I', thumbCol: 'THOMAS CUADRICEPS IZQ' },
+                { numCol: 'THOMAS_SARTORIO_D', thumbCol: 'THOMAS SARTORIO DER' },
+                { numCol: 'THOMAS_SARTORIO_I', thumbCol: 'THOMAS SARTORIO IZQ' },
+                { numCol: 'JURDAN_D', thumbCol: 'JURDAN DER' }, // Asume que "JURDAN D" en tu CSV se refiere a "JURDAN DER" para el pulgar
+                { numCol: 'JURDAN_I', thumbCol: 'JURDAN IZQ' }  // Asume que "JURDAN I" en tu CSV se refiere a "JURDAN IZQ" para el pulgar
             ];
 
-            thumbColumns.forEach(colPrefix => {
-                // Find the corresponding column that contains the thumb character (e.g., "THOMAS PSOAS DER")
-                // We're looking for the column name like "THOMAS PSOAS DER" or "JURDAN DER"
-                const displayColName = Object.keys(player).find(key =>
-                    key.startsWith(colPrefix) && (key.includes('👍') || key.includes('👎'))
-                );
-
+            columnsToRender.forEach(colPair => {
                 const cell = row.insertCell();
-                if (displayColName && player[displayColName]) {
-                    const thumbValue = player[displayColName].trim();
-                    if (thumbValue === '👍') {
-                        cell.classList.add('thumb-up');
-                    } else if (thumbValue === '👎') {
-                        cell.classList.add('thumb-down');
-                    }
-                    // Optionally, you might want to display the numeric value next to the thumb.
-                    // If you want the number to be in the cell, you'd need to adjust how the original data is read
-                    // or parse the number from the original column (e.g., 'THOMAS_PSOAS_D').
-                    // For now, it just adds the class which applies the thumb via CSS ::before
+                const numericValue = player[colPair.numCol] || ''; // Get numeric value, default to empty string if not found
+                const thumbValue = player[colPair.thumbCol] ? player[colPair.thumbCol].trim() : ''; // Get thumb value
+
+                // Display numeric value
+                cell.textContent = numericValue;
+
+                // Add thumb class if a thumb value exists
+                if (thumbValue === '👍') {
+                    cell.classList.add('thumb-up');
+                } else if (thumbValue === '👎') {
+                    cell.classList.add('thumb-down');
                 }
+                // The CSS ::before content will add the actual emoji before the text content
             });
         });
     }
