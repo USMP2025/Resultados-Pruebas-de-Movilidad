@@ -5,23 +5,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to fetch and parse the CSV data
     async function fetchCSVData() {
-        // Assuming the CSV file is in the same directory as the HTML file
+        // Asegúrate de que este nombre de archivo coincida EXACTAMENTE con el de tu CSV en GitHub
         const response = await fetch('Para deshboard.xlsx - RESULTADOS.csv');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} - Could not load CSV file. Check filename and path.`);
+        }
         const text = await response.text();
         return parseCSV(text);
     }
 
-    // Simple CSV parser
+    // Simple CSV parser (MEJORADO)
     function parseCSV(text) {
-        const lines = text.trim().split('\n');
-        const headers = lines[0].split(',');
+        // Separa por líneas, manejando posibles retornos de carro de Windows (\r\n)
+        const lines = text.trim().split(/\r?\n/);
+        const headers = lines[0].split(',').map(header => header.trim()); // Trim headers too
         const data = [];
 
         for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',');
             const row = {};
             headers.forEach((header, index) => {
-                row[header.trim()] = values[index] ? values[index].trim() : ''; // Handle potential missing values
+                // Asegúrate de que values[index] exista antes de llamar a .trim()
+                row[header] = values[index] ? values[index].trim() : '';
             });
             data.push(row);
         }
@@ -62,18 +67,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Function to render the table rows (CORREGIDA)
+    // Function to render the table rows (VERSION FINAL CORREGIDA)
     function renderTable(data) {
         resultsTableBody.innerHTML = ''; // Clear existing rows
 
         data.forEach(player => {
             const row = resultsTableBody.insertRow();
-            row.insertCell().textContent = player.JUGADOR;
+            row.insertCell().textContent = player.JUGADOR; // Esta línea es clave para cargar el nombre del jugador
             row.insertCell().textContent = player.CATEGORÍA;
             row.insertCell().textContent = player.FECHA;
 
-            // Define the pairs of (numeric_column, thumb_column_display_name)
-            // The order here must match the <th> order in index.html
+            // Definimos los pares de columnas: (columna_numerica, columna_pulgar) del CSV.
+            // El orden de estos objetos debe coincidir con el orden de las columnas <th> en index.html.
             const columnsToRender = [
                 { numCol: 'THOMAS_PSOAS_D', thumbCol: 'THOMAS PSOAS DER' },
                 { numCol: 'THOMAS_PSOAS_I', thumbCol: 'THOMAS PSOAS IZQ' },
@@ -81,25 +86,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 { numCol: 'THOMAS_CUADRICEPS_I', thumbCol: 'THOMAS CUADRICEPS IZQ' },
                 { numCol: 'THOMAS_SARTORIO_D', thumbCol: 'THOMAS SARTORIO DER' },
                 { numCol: 'THOMAS_SARTORIO_I', thumbCol: 'THOMAS SARTORIO IZQ' },
-                { numCol: 'JURDAN_D', thumbCol: 'JURDAN DER' }, // Asume que "JURDAN D" en tu CSV se refiere a "JURDAN DER" para el pulgar
-                { numCol: 'JURDAN_I', thumbCol: 'JURDAN IZQ' }  // Asume que "JURDAN I" en tu CSV se refiere a "JURDAN IZQ" para el pulgar
+                { numCol: 'JURDAN_D', thumbCol: 'JURDAN DER' },
+                { numCol: 'JURDAN_I', thumbCol: 'JURDAN IZQ' }
             ];
 
             columnsToRender.forEach(colPair => {
                 const cell = row.insertCell();
-                const numericValue = player[colPair.numCol] || ''; // Get numeric value, default to empty string if not found
-                const thumbValue = player[colPair.thumbCol] ? player[colPair.thumbCol].trim() : ''; // Get thumb value
+                // Obtenemos el valor numérico, si no existe, será una cadena vacía
+                const numericValue = player[colPair.numCol] || '';
+                // Obtenemos el valor del pulgar, si no existe o es vacío, será una cadena vacía
+                const thumbValue = (player[colPair.thumbCol] || '').trim();
 
-                // Display numeric value
+                // Mostramos el valor numérico en la celda
                 cell.textContent = numericValue;
 
-                // Add thumb class if a thumb value exists
+                // Agregamos la clase del pulgar si encontramos un pulgar válido
                 if (thumbValue === '👍') {
                     cell.classList.add('thumb-up');
                 } else if (thumbValue === '👎') {
                     cell.classList.add('thumb-down');
                 }
-                // The CSS ::before content will add the actual emoji before the text content
+                // El CSS ::before se encargará de añadir el emoji antes del texto
             });
         });
     }
@@ -113,18 +120,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedCategory === 'all') {
             filteredData = allPlayersData;
         } else {
+            // Filtra los datos basados en la categoría seleccionada
             filteredData = allPlayersData.filter(player => player.CATEGORÍA === selectedCategory);
         }
-        renderTable(filteredData);
+        renderTable(filteredData); // Llama a la función para re-renderizar la tabla con los datos filtrados
     });
 
-    // Initial data load and render
+    // Initial data load and render (Carga inicial y manejo de errores)
     fetchCSVData().then(data => {
-        allPlayersData = data;
-        populateCategoryFilter(allPlayersData);
-        renderTable(allPlayersData); // Render all data initially
+        allPlayersData = data; // Almacena todos los datos cargados globalmente
+        populateCategoryFilter(allPlayersData); // Rellena el filtro de categorías
+        renderTable(allPlayersData); // Renderiza la tabla con todos los datos inicialmente
     }).catch(error => {
-        console.error("Error loading or parsing CSV:", error);
-        resultsTableBody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:red;">Error al cargar los datos. Por favor, asegúrese de que el archivo CSV es correcto.</td></tr>';
+        console.error("Error al cargar o procesar el CSV:", error);
+        // Muestra un mensaje de error en la tabla si falla la carga del CSV
+        resultsTableBody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:red;">Error al cargar los datos: ${error.message}. Por favor, verifique el nombre del archivo CSV y su contenido.</td></tr>`;
     });
 });
