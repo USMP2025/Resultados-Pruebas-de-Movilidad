@@ -5,8 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to fetch and parse the CSV data
     async function fetchCSVData() {
-        // Asegúrate de que este nombre de archivo coincida EXACTAMENTE con el de tu CSV en GitHub
-        const response = await fetch('Para deshboard.xlsx - RESULTADOS.csv');
+        // ¡IMPORTANTE! Nombre del archivo CSV actualizado aquí:
+        const response = await fetch('Resultados_Dashboard.csv');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status} - No se pudo cargar el archivo CSV. Verifique el nombre del archivo y la ruta.`);
         }
@@ -14,17 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return parseCSV(text);
     }
 
-    // Simple CSV parser (MEJORADO)
+    // Simple CSV parser
     function parseCSV(text) {
-        // Separa por líneas, manejando posibles retornos de carro de Windows (\r\n)
         const lines = text.trim().split(/\r?\n/);
-        const headers = lines[0].split(',').map(header => header.trim()); // Trim headers too
+        const headers = lines[0].split(',').map(header => header.trim());
         const data = [];
 
         for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',');
             const row = {};
-            // Asegúrate de que haya suficientes valores en la línea para cada encabezado
             headers.forEach((header, index) => {
                 row[header] = values[index] ? values[index].trim() : '';
             });
@@ -62,9 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Function to render the table rows (VERSION FINAL Y CORREGIDA)
+    // Function to render the table rows
     function renderTable(data) {
-        resultsTableBody.innerHTML = ''; // Limpia las filas existentes
+        resultsTableBody.innerHTML = '';
 
         if (data.length === 0) {
             resultsTableBody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#555;">No hay datos para esta categoría.</td></tr>';
@@ -73,14 +71,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         data.forEach(player => {
             const row = resultsTableBody.insertRow();
-            // Inserta las celdas básicas (Jugador, Categoría, Fecha)
-            row.insertCell().textContent = player.JUGADOR || ''; // Asegura que se muestre vacío si no hay datos
+            row.insertCell().textContent = player.JUGADOR || '';
             row.insertCell().textContent = player.CATEGORÍA || '';
             row.insertCell().textContent = player.FECHA || '';
 
-            // Definimos los pares de columnas: (columna_numerica_CSV, columna_pulgar_CSV).
-            // Estos nombres DEBEN COINCIDIR EXACTAMENTE con las cabeceras de tu CSV.
-            // El ORDEN de estos objetos DEBE COINCIDIR con el ORDEN de las columnas <th> en tu index.html.
             const columnsToRender = [
                 { numCol: 'THOMAS_PSOAS_D', thumbCol: 'THOMAS PSOAS DER' },
                 { numCol: 'THOMAS_PSOAS_I', thumbCol: 'THOMAS PSOAS IZQ' },
@@ -94,27 +88,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             columnsToRender.forEach(colPair => {
                 const cell = row.insertCell();
-                // Obtenemos el valor numérico, si no existe o es vacío, será una cadena vacía
                 const numericValue = (player[colPair.numCol] || '').trim();
-                // Obtenemos el valor del pulgar, si no existe o es vacío, será una cadena vacía
                 const thumbValue = (player[colPair.thumbCol] || '').trim();
 
-                // Mostramos el valor numérico en la celda
                 cell.textContent = numericValue;
 
-                // Agregamos la clase del pulgar si encontramos un pulgar válido
                 if (thumbValue === '👍') {
                     cell.classList.add('thumb-up');
                 } else if (thumbValue === '👎') {
                     cell.classList.add('thumb-down');
                 }
-                // El CSS ::before se encargará de añadir el emoji antes del texto
             });
         });
     }
 
-
-    // Event listener for category filter change
     categoryFilter.addEventListener('change', () => {
         const selectedCategory = categoryFilter.value;
         let filteredData = [];
@@ -127,7 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTable(filteredData);
     });
 
-    // Initial data load and render (Carga inicial y manejo de errores)
     fetchCSVData().then(data => {
         allPlayersData = data;
         populateCategoryFilter(allPlayersData);
