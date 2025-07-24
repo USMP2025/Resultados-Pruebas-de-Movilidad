@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Asegúrate de que este nombre de archivo coincida EXACTAMENTE con el de tu CSV en GitHub
         const response = await fetch('Para deshboard.xlsx - RESULTADOS.csv');
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status} - Could not load CSV file. Check filename and path.`);
+            throw new Error(`HTTP error! status: ${response.status} - No se pudo cargar el archivo CSV. Verifique el nombre del archivo y la ruta.`);
         }
         const text = await response.text();
         return parseCSV(text);
@@ -24,8 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',');
             const row = {};
+            // Asegúrate de que haya suficientes valores en la línea para cada encabezado
             headers.forEach((header, index) => {
-                // Asegúrate de que values[index] exista antes de llamar a .trim()
                 row[header] = values[index] ? values[index].trim() : '';
             });
             data.push(row);
@@ -36,27 +36,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to populate the category filter
     function populateCategoryFilter(data) {
         const categories = new Set(data.map(player => player.CATEGORÍA));
-        // Add specific categories as requested by the user, ensuring they are present if not already.
         const staticCategories = ['SELECTIVO', '2008', '2009', '2010', '2011', '2012'];
 
-        // Add static categories first to ensure order and presence
         staticCategories.forEach(cat => {
             if (!categories.has(cat)) {
                 categories.add(cat);
             }
         });
 
-        // Convert Set to Array and sort, excluding 'SELECTIVO' from general sort if it was added dynamically
         let sortedCategories = Array.from(categories).sort((a, b) => {
-            if (a === 'SELECTIVO') return -1; // Keep SELECTIVO at the top
+            if (a === 'SELECTIVO') return -1;
             if (b === 'SELECTIVO') return 1;
             return a.localeCompare(b);
         });
 
-        // Ensure 'SELECTIVO' is explicitly first if it exists, and remove duplicates that might arise from manual addition + set conversion
-        const uniqueSortedCategories = [...new Set(sortedCategories)]; // Final unique sort
+        const uniqueSortedCategories = [...new Set(sortedCategories)];
 
-        // Clear existing options, except "Todas las Categorías"
         categoryFilter.innerHTML = '<option value="all">Todas las Categorías</option>';
 
         uniqueSortedCategories.forEach(category => {
@@ -67,18 +62,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Function to render the table rows (VERSION FINAL CORREGIDA)
+    // Function to render the table rows (VERSION FINAL Y CORREGIDA)
     function renderTable(data) {
-        resultsTableBody.innerHTML = ''; // Clear existing rows
+        resultsTableBody.innerHTML = ''; // Limpia las filas existentes
+
+        if (data.length === 0) {
+            resultsTableBody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#555;">No hay datos para esta categoría.</td></tr>';
+            return;
+        }
 
         data.forEach(player => {
             const row = resultsTableBody.insertRow();
-            row.insertCell().textContent = player.JUGADOR; // Esta línea es clave para cargar el nombre del jugador
-            row.insertCell().textContent = player.CATEGORÍA;
-            row.insertCell().textContent = player.FECHA;
+            // Inserta las celdas básicas (Jugador, Categoría, Fecha)
+            row.insertCell().textContent = player.JUGADOR || ''; // Asegura que se muestre vacío si no hay datos
+            row.insertCell().textContent = player.CATEGORÍA || '';
+            row.insertCell().textContent = player.FECHA || '';
 
-            // Definimos los pares de columnas: (columna_numerica, columna_pulgar) del CSV.
-            // El orden de estos objetos debe coincidir con el orden de las columnas <th> en index.html.
+            // Definimos los pares de columnas: (columna_numerica_CSV, columna_pulgar_CSV).
+            // Estos nombres DEBEN COINCIDIR EXACTAMENTE con las cabeceras de tu CSV.
+            // El ORDEN de estos objetos DEBE COINCIDIR con el ORDEN de las columnas <th> en tu index.html.
             const columnsToRender = [
                 { numCol: 'THOMAS_PSOAS_D', thumbCol: 'THOMAS PSOAS DER' },
                 { numCol: 'THOMAS_PSOAS_I', thumbCol: 'THOMAS PSOAS IZQ' },
@@ -92,8 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             columnsToRender.forEach(colPair => {
                 const cell = row.insertCell();
-                // Obtenemos el valor numérico, si no existe, será una cadena vacía
-                const numericValue = player[colPair.numCol] || '';
+                // Obtenemos el valor numérico, si no existe o es vacío, será una cadena vacía
+                const numericValue = (player[colPair.numCol] || '').trim();
                 // Obtenemos el valor del pulgar, si no existe o es vacío, será una cadena vacía
                 const thumbValue = (player[colPair.thumbCol] || '').trim();
 
@@ -120,20 +122,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedCategory === 'all') {
             filteredData = allPlayersData;
         } else {
-            // Filtra los datos basados en la categoría seleccionada
             filteredData = allPlayersData.filter(player => player.CATEGORÍA === selectedCategory);
         }
-        renderTable(filteredData); // Llama a la función para re-renderizar la tabla con los datos filtrados
+        renderTable(filteredData);
     });
 
     // Initial data load and render (Carga inicial y manejo de errores)
     fetchCSVData().then(data => {
-        allPlayersData = data; // Almacena todos los datos cargados globalmente
-        populateCategoryFilter(allPlayersData); // Rellena el filtro de categorías
-        renderTable(allPlayersData); // Renderiza la tabla con todos los datos inicialmente
+        allPlayersData = data;
+        populateCategoryFilter(allPlayersData);
+        renderTable(allPlayersData);
     }).catch(error => {
         console.error("Error al cargar o procesar el CSV:", error);
-        // Muestra un mensaje de error en la tabla si falla la carga del CSV
         resultsTableBody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:red;">Error al cargar los datos: ${error.message}. Por favor, verifique el nombre del archivo CSV y su contenido.</td></tr>`;
     });
 });
